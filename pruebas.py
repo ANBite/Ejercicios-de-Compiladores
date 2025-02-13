@@ -21,7 +21,7 @@ def identificar_token(texto):
 
 # Analisis lexico
 codigo_fuente = """
-print(hola);
+print(hola mundo);
 """
 
 tokens_globales = identificar_token(codigo_fuente)
@@ -67,6 +67,8 @@ class Parser:
             if palabra == "print":
                 self.coincidir("DELIMITER")  # ()
                 mensaje = self.coincidir("IDENTIFIER")
+                if self.obtener_token_actual() and self.obtener_token_actual()[0] == "IDENTIFIER":
+                    mensaje += self.coincidir("IDENTIFIER")
                 self.coincidir("DELIMITER")  # )
                 self.coincidir("DELIMITER")  # ;
                 print(f"Imprimiendo: {mensaje}")

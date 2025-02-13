@@ -4,7 +4,7 @@ tokens_patron = {
     "KEYWORD": r"\b(if|else|while|for|print|return|int|float|void)\b",
     "IDENTIFIER": r"\b[a-zA-Z_][a-zA-Z0-9_]*\b",
     "NUMBER": r"\b\d+(\.\d+)?\b",
-    "OPERATOR": r"[+\-*/]",
+    "OPERATOR": r"[+\-*/]|==|=|\+\+|--",
     "DELIMITER": r"[(),;{}]",
     "WHITESPACE": r"\s+"
 }
@@ -21,13 +21,22 @@ def identificar_token(texto):
 
 # Analisis lexico
 codigo_fuente = """
-for (i = 1; i < 5; i++) print(i);
+print(hola);
 """
 
 tokens_globales = identificar_token(codigo_fuente)
 print("Tokens encontrados:")
 for tipo, valor in tokens_globales:
-    print(f"{tipo} : {valor}")
+    if valor == "=":
+        print(f"{tipo} : {valor} (asignación)")
+    elif valor == "==":
+        print(f"{tipo} : {valor} (comparación)")
+    elif valor == "++":
+        print(f"{tipo} : {valor} (incremento)")
+    elif valor == "--":
+        print(f"{tipo} : {valor} (decremento)")
+    else:
+        print(f"{tipo} : {valor}")
 
 # Identificador sintáctico
 class Parser:
@@ -56,7 +65,7 @@ class Parser:
         if token_actual and token_actual[0] == "KEYWORD":
             palabra = self.coincidir("KEYWORD")
             if palabra == "print":
-                self.coincidir("DELIMITER")  # (
+                self.coincidir("DELIMITER")  # ()
                 mensaje = self.coincidir("IDENTIFIER")
                 self.coincidir("DELIMITER")  # )
                 self.coincidir("DELIMITER")  # ;

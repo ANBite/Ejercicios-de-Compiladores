@@ -4,11 +4,11 @@ tokens_patron = {
     "KEYWORD": r"\b(if|else|while|for|print|return|int|float|void)\b",
     "IDENTIFIER": r"\b[a-zA-Z_][a-zA-Z0-9_]*\b",
     "NUMBER": r"\b\d+(\.\d+)?\b",
-    "OPERATOR": r"[+\-*/]",
+    "OPERATOR": r"[+\-*/]|==|=|\+\+|--",
     "DELIMITER": r"[(),;{}]",
     "WHITESPACE": r"\s+"
 }
-
+ 
 def identificar_token(texto):
     patron_general = "|".join(f"(?P<{token}>{patron})" for token, patron in tokens_patron.items())
     patron_regex = re.compile(patron_general)
@@ -20,14 +20,30 @@ def identificar_token(texto):
     return tokens_encontrados
 
 # Analisis lexico
-codigo_fuente = """
-for (i = 1; i < 5; i++) print(i);
+codigo_print = """
+print(HOLA MUNDO);
+"""
+codigo_if = """
+if (1 + 2) { print (listoo ); }
 """
 
-tokens_globales = identificar_token(codigo_fuente)
+codigo_else = """
+if (1 + 2) { print (listoo); } else: { print(falsoo); }
+"""
+
+tokens_globales = identificar_token(codigo_else)
 print("Tokens encontrados:")
 for tipo, valor in tokens_globales:
-    print(f"{tipo} : {valor}")
+    if valor == "=":
+        print(f"{tipo} : {valor} (asignación)")
+    elif valor == "==":
+        print(f"{tipo} : {valor} (comparación)")
+    elif valor == "++":
+        print(f"{tipo} : {valor} (incremento)")
+    elif valor == "--":
+        print(f"{tipo} : {valor} (decremento)")
+    else:
+        print(f"{tipo} : {valor}")
 
 # Identificador sintáctico
 class Parser:
@@ -56,12 +72,16 @@ class Parser:
         if token_actual and token_actual[0] == "KEYWORD":
             palabra = self.coincidir("KEYWORD")
             if palabra == "print":
-                self.coincidir("DELIMITER")  # (
+                #print(hola mundo);
+                self.coincidir("DELIMITER")  # ()
                 mensaje = self.coincidir("IDENTIFIER")
+                if self.obtener_token_actual() and self.obtener_token_actual()[0] == "IDENTIFIER":
+                    mensaje += self.coincidir("IDENTIFIER")
                 self.coincidir("DELIMITER")  # )
                 self.coincidir("DELIMITER")  # ;
                 print(f"Imprimiendo: {mensaje}")
             elif palabra == "if":
+                # if (1 + 2) { print (hola mundo); }
                 self.coincidir("DELIMITER")  # (
                 condicion = self.expresion()
                 self.coincidir("DELIMITER")  # )
@@ -70,6 +90,7 @@ class Parser:
                     self.analizar_sentencia()
                 self.coincidir("DELIMITER")  # }
             elif palabra == "else":
+                # else: { print(hola mundo); }
                 self.coincidir("DELIMITER")  # {
                 self.analizar_sentencia()
                 self.coincidir("DELIMITER")  # }

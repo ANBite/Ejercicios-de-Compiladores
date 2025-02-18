@@ -1,10 +1,10 @@
 import re
 
 tokens_patron = {
-    "KEYWORD": r"\b(if|else|while|for|print|return|int|float|void)\b",
+    "KEYWORD": r"\b(if|else|while|return|int|float|void)\b",
     "IDENTIFIER": r"\b[a-zA-Z_][a-zA-Z0-9_]*\b",
     "NUMBER": r"\b\d+(\.\d+)?\b",
-    "OPERATOR": r"[+\-*/]|==|=|\+\+|--",
+    "OPERATOR": r"[+\-*/]",
     "DELIMITER": r"[(),;{}]",
     "WHITESPACE": r"\s+"
 }
@@ -19,26 +19,18 @@ def identificar_token(texto):
                 tokens_encontrados.append((token, valor))
     return tokens_encontrados
 
-# Analisis lexico
+#analisis lexico
+
 codigo_fuente = """
-print(hola mundo);
+20 + 10;
 """
 
 tokens_globales = identificar_token(codigo_fuente)
 print("Tokens encontrados:")
 for tipo, valor in tokens_globales:
-    if valor == "=":
-        print(f"{tipo} : {valor} (asignación)")
-    elif valor == "==":
-        print(f"{tipo} : {valor} (comparación)")
-    elif valor == "++":
-        print(f"{tipo} : {valor} (incremento)")
-    elif valor == "--":
-        print(f"{tipo} : {valor} (decremento)")
-    else:
-        print(f"{tipo} : {valor}")
+    print(f"{tipo} : {valor}")
 
-# Identificador sintáctico
+#Identificador sintáctico
 class Parser:
     def __init__(self, tokens):
         self.tokens = tokens
@@ -56,37 +48,10 @@ class Parser:
             raise SyntaxError(f"Error sintactico, se esperaba {tipo_esperado}, pero se encontro: {token_actual}")
 
     def parsear(self):
-        while self.obtener_token_actual():
-            self.analizar_sentencia()
-        print("Analisis sintactico completado sin errores")
-
-    def analizar_sentencia(self):
-        token_actual = self.obtener_token_actual()
-        if token_actual and token_actual[0] == "KEYWORD":
-            palabra = self.coincidir("KEYWORD")
-            if palabra == "print":
-                self.coincidir("DELIMITER")  # ()
-                mensaje = self.coincidir("IDENTIFIER")
-                if self.obtener_token_actual() and self.obtener_token_actual()[0] == "IDENTIFIER":
-                    mensaje += self.coincidir("IDENTIFIER")
-                self.coincidir("DELIMITER")  # )
-                self.coincidir("DELIMITER")  # ;
-                print(f"Imprimiendo: {mensaje}")
-            elif palabra == "if":
-                self.coincidir("DELIMITER")  # (
-                condicion = self.expresion()
-                self.coincidir("DELIMITER")  # )
-                self.coincidir("DELIMITER")  # {
-                if condicion:
-                    self.analizar_sentencia()
-                self.coincidir("DELIMITER")  # }
-            elif palabra == "else":
-                self.coincidir("DELIMITER")  # {
-                self.analizar_sentencia()
-                self.coincidir("DELIMITER")  # }
-        else:
-            self.expresion()
-            self.coincidir("DELIMITER")  # ;
+        #Punto de entrada: se espera una funcion
+        resultado = self.expresion()
+        self.coincidir("DELIMITER")  # ;
+        return resultado
 
     def expresion(self):
         resultado = self.termino()
@@ -125,6 +90,8 @@ class Parser:
 try:
     print("Iniciando analisis sintactico...")
     parser = Parser(tokens_globales)
-    parser.parsear()
+    resultado = parser.parsear()
+    print("Analisis sintactico completado sin errores")
+    print(f"Resultado: {resultado}")
 except SyntaxError as e:
     print(e)

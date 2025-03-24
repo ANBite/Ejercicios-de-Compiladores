@@ -194,33 +194,33 @@ class NodoNumero(NodoAST):
     """
 
     class NodoIf(NodoAST):
-    def __init__(self, condicion, cuerpo, else_cuerpo=None):
-        super().__init__()
-        self.condicion = condicion  # Expresión condicional
-        self.cuerpo = cuerpo  # Instrucciones dentro del if
-        self.else_cuerpo = else_cuerpo  # Instrucciones dentro del else (opcional)
+        def __init__(self, condicion, cuerpo, else_cuerpo=None):
+            super().__init__()
+            self.condicion = condicion  # Expresión condicional
+            self.cuerpo = cuerpo  # Instrucciones dentro del if
+            self.else_cuerpo = else_cuerpo  # Instrucciones dentro del else (opcional)
 
-    def traducir(self):
-        else_part = f"\nelse:\n    {self.else_cuerpo.traducir()}" if self.else_cuerpo else ""
-        return f"if {self.condicion.traducir()}:\n    {self.cuerpo.traducir()}{else_part}"
+        def traducir(self):
+            else_part = f"\nelse:\n    {self.else_cuerpo.traducir()}" if self.else_cuerpo else ""
+            return f"if {self.condicion.traducir()}:\n    {self.cuerpo.traducir()}{else_part}"
 
-    def generar_codigo(self):
-        codigo = self.condicion.generar_codigo()  # Código de la condición
-        codigo += "\n    CMP AX, 0 ; Comparar resultado con 0"  # Verificar si es falso
-        codigo += "\n    JE ELSE ; Saltar a ELSE si es falso"
-        
-        # Código dentro del bloque if
-        for instruccion in self.cuerpo:
-            codigo += f"\n{instruccion.generar_codigo()}"
-
-        if self.else_cuerpo:
-            codigo += "\n    JMP END_IF ; Saltar fuera del if"
-            codigo += "\nELSE:"
-            for instruccion in self.else_cuerpo:
+        def generar_codigo(self):
+            codigo = self.condicion.generar_codigo()  # Código de la condición
+            codigo += "\n    CMP AX, 0 ; Comparar resultado con 0"  # Verificar si es falso
+            codigo += "\n    JE ELSE ; Saltar a ELSE si es falso"
+            
+            # Código dentro del bloque if
+            for instruccion in self.cuerpo:
                 codigo += f"\n{instruccion.generar_codigo()}"
 
-        codigo += "\nEND_IF:"
-        return codigo
+            if self.else_cuerpo:
+                codigo += "\n    JMP END_IF ; Saltar fuera del if"
+                codigo += "\nELSE:"
+                for instruccion in self.else_cuerpo:
+                    codigo += f"\n{instruccion.generar_codigo()}"
+
+            codigo += "\nEND_IF:"
+            return codigo
 
 
 #----------------------------------------------------------------------------------- ANALIZADOR ----------------------

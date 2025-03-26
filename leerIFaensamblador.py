@@ -1,7 +1,3 @@
-#traducir if, for, while, repeat a ensamblador
-#luego que ejecute
-
-#TRADUCIR IF y ELSE a ensamblador
 import re
 tokens_patron = {
     "KEYWORD": r"\b(if|else|while|return|int|float|void)\b",
@@ -9,29 +5,16 @@ tokens_patron = {
     "NUMBER": r"\b\d+(\.\d+)?\b",
     "OPERATOR": r"[+\-*/]",
     "DELIMITER": r"[(),;{}]",
-    "WHITESPACE": r"\s+"
+    "WHITESPACE": r"\s+",
+    "EQUAL" : r"="
 }
 
 class NodoAST():
-    #Clase base para todos los nodos del AST
-
-
-    #Traducir de lenguaje C a python 17/03/2025
-        #ubut suma(int a, intb) {
-        #   int c = a + b;
-        #   return c
-        #}
-
-        #def suma(a,b):
-        #c = a + b
-        #return c
-
     def traducir(self):
-        raise NotImplementedError("Método traducir() No implementado en este nodo.")
+        raise NotImplementedError("Metodo traducir() No implementado en este nodo.")
     
     def generar_codigo(self):
-        raise NotImplementedError("Método generar_codigo() No implementado en este nodo.")
-
+        raise NotImplementedError("Metodo generar_codigo() No implementado en este nodo.")
 
 class NodoFuncion(NodoAST):
     #Nodo que representa una funcion
@@ -42,10 +25,63 @@ class NodoFuncion(NodoAST):
         self.cuerpo = cuerpo
     
     def traducir(self):
-        params = ",".join(p.traducir() for p in self.parametro)
-        cuerpo = "\n    ".join(c.traducir() for c in self.cuerpo)
-        return f"def {self.nombre[1]} ({params}):\n     {cuerpo}"  #Identificador en self.nombre[0]   
 
+        if self.nombre[0][1] == "INT".lower():
+            params = ",".join(NodoParametro(p[0], p[1]).traducir() for p in self.parametro)
+
+            cuerpo = []
+            for c in self.cuerpo:
+                #Al inicio es un nodo asignacion y un nodo retorno, luego el nodo asignacion se divide en asignacion y operacion
+                if isinstance(c, NodoAsignacion):
+                    cuerpo.append(c.traducir())
+                elif isinstance(c, NodoRetorno):
+                    cuerpo.append(c.traducir())
+
+            return f"def {self.nombre[1][1]} ({params}):\n     {cuerpo[0]}\n     {cuerpo[1]}"  #Identificador en self.nombre[0] 
+        
+        elif self.nombre[0][1] == "IF".lower():
+            params = ",".join(NodoParametro(p[0], p[1]).traducir() for p in self.parametro)
+
+            cuerpo = []
+            for c in self.cuerpo:
+                #Al inicio es un nodo asignacion y un nodo retorno, luego el nodo asignacion se divide en asignacion y operacion
+                if isinstance(c, NodoAsignacion):
+                    cuerpo.append(c.traducir())
+                elif isinstance(c, NodoRetorno):
+                    cuerpo.append(c.traducir())
+            
+
+            ejecucion = self.ejecutar("if", cuerpo[0], cuerpo[1])
+            salto = "==================================== Ejecucion del Codigo ==========================================="
+            return f"if {cuerpo[0]}:\n    {cuerpo[1]} \n\n{salto}\n\n{ejecucion}"  #Identificador en self.nombre[0] 
+        
+    def ejecutar(self, tipo, cuerpo1, cuerpo2):
+        super().__init__()
+        self.tipo = tipo
+        self.cuerpo1 = cuerpo1
+        self.cuerpo2 = cuerpo2
+        if self.tipo == "IF".lower():
+            if self.cuerpo1[2] == "=" and self.cuerpo1[3] == "=":
+                if self.cuerpo1[0] == self.cuerpo1[5]:
+                    return f"{self.cuerpo2}"
+                else:
+                    return f"{self.cuerpo2}"
+
+        
+    
+    def generar_codigo(self):
+        params = ",".join(NodoParametro(p[0], p[1]).generar_codigo() for p in self.parametro)
+        cuerpo = []
+        for c in self.cuerpo:
+            #Al inicio es un nodo asignacion y un nodo retorno, luego el nodo asignacion se divide en asignacion y operacion
+            if isinstance(c, NodoAsignacion):
+                cuerpo.append(c.generar_codigo())
+            elif isinstance(c, NodoRetorno):
+                cuerpo.append(c.generar_codigo())
+
+        return f"{self.nombre[1]} PROC \n{cuerpo[0]}\n{cuerpo[1]}    \n{self.nombre[1]} ENDP"   
+
+        
 
 
 class NodoParametro(NodoAST):
@@ -57,6 +93,9 @@ class NodoParametro(NodoAST):
 
     def traducir(self):
        return self.nombre[1]
+    
+    def generar_codigo(self):
+       return self.nombre[1]
 
 
 class NodoAsignacion(NodoAST):
@@ -67,12 +106,22 @@ class NodoAsignacion(NodoAST):
         self.expresion = expresion #Que se está asignando la variable
 
     def traducir(self):
-       return f"{self.nombre[1]} = {self.expresion.traducir()}"
+        
+        #print(self.nombre[0][1])
+        
+        if self.nombre[1] == "IF".lower():
+            if isinstance(self.expresion, NodoOperacion):
+                return f"{self.expresion.traducir()}"
+        
+        elif self.nombre[0][1] == "INT".lower():
+            if isinstance(self.expresion, NodoOperacion):
+                return f"{self.nombre[1][1]} = {self.expresion.traducir()}"
     
     def generar_codigo(self):
-       codigo = self.expresion.generar_codigo()
-       codigo += f"\n    mov  [{self.nombre[1]}], eax; guardar resultado en {self.nombre[1]}"
-       return codigo
+        if isinstance(self.expresion, NodoOperacion):
+            codigo = self.expresion.generar_codigo()
+            codigo += f"\n    mov  [{self.nombre[1][1]}], eax; guardar resultado en {self.nombre[1][1]}"
+            return codigo
 
 
 class NodoOperacion(NodoAST):
@@ -84,23 +133,41 @@ class NodoOperacion(NodoAST):
         self.derecha = derecha
 
     def traducir(self):
-       return f"{self.izquierda.traducir()} {self.operador[1]} {self.derecha.traducir()}"
+        if self.operador[0] == "==":
+            if isinstance(self.izquierda, NodoNumero) and isinstance(self.derecha, NodoNumero):
+                return f"{self.izquierda.traducir()} {self.operador[0]} {self.derecha.traducir()}"
+            elif isinstance(self.izquierda, NodoIdentificador) and isinstance(self.derecha, NodoIdentificador):
+                return f"{self.izquierda.traducir()} {self.operador[0]} {self.derecha.traducir()}"
+        elif self.operador[0] == "OPERATOR":  
+            if isinstance(self.izquierda, NodoNumero) and isinstance(self.derecha, NodoNumero):
+                return f"{self.izquierda.traducir()} {self.operador[1]} {self.derecha.traducir()}"
+            elif isinstance(self.izquierda, NodoIdentificador) and isinstance(self.derecha, NodoIdentificador):
+                return f"{self.izquierda.traducir()} {self.operador[1]} {self.derecha.traducir()}"
     
-    def generar_codigo(self):
-       codigo = []
-       codigo.append(self.izquierda.generar_codigo()) #Cargar el operador izquierdo
-       codigo.append("    push eax ; guardar en la pila") #Guardar el operando izquierdo en la pila
-       
-       codigo.append(self.derecha.generar_codigo()) #Cargar el operador derecho
-       codigo.append("    pop ebx; recuperar el primer operando") 
-       #ebx = operando 1 y eax = operando 2
 
-       if self.operador()[1] == "+":
-          codigo.append("    add eax, ebx ;eax + ebx")
-       elif self.operador[1] == "-":
-          codigo.append("    sub ebx, eax; ebx - eax")
-          codigo.append("    mov eax, ebx")
-       return "\n".join(codigo)
+    def generar_codigo(self):
+        codigo = []
+        if isinstance(self.izquierda, NodoNumero) and isinstance(self.derecha, NodoNumero):
+            codigo.append(self.izquierda.generar_codigo()) #Cargar el operador izquierdo
+            codigo.append("    push eax ; guardar en la pila") #Guardar el operando izquierdo en la pila
+            
+            codigo.append(self.derecha.generar_codigo()) #Cargar el operador derecho
+            codigo.append("    pop ebx; recuperar el primer operando") 
+            #ebx = operando 1 y eax = operando 2
+        elif isinstance(self.izquierda, NodoIdentificador) and isinstance(self.derecha, NodoIdentificador):
+            codigo.append(self.izquierda.generar_codigo()) #Cargar el operador izquierdo
+            codigo.append("    push eax ; guardar en la pila") #Guardar el operando izquierdo en la pila
+            
+            codigo.append(self.derecha.generar_codigo()) #Cargar el operador derecho
+            codigo.append("    pop ebx; recuperar el primer operando") 
+            #ebx = operando 1 y eax = operando 2
+
+        if self.operador[1] == "+":
+            codigo.append("    add eax, ebx ;eax + ebx")
+        elif self.operador[1] == "-":
+            codigo.append("    sub ebx, eax; ebx - eax")
+            codigo.append("    mov eax, ebx")
+        return "\n".join(codigo)
           
     #Crear un método que optimice la operación
     def optimizar(self):
@@ -149,15 +216,15 @@ class NodoRetorno(NodoAST):
         self.expresion = expresion
 
     def traducir(self):
-       return f"return {self.expresion.traducir()}"
+       if isinstance(self.expresion, NodoIdentificador):
+            return f"return {self.expresion.traducir()}"
     
 
     def generar_codigo(self):
-       return self.expresion.generar_codigo() + "\n    ret ; retorno desde la subrutina"
+       if isinstance(self.expresion, NodoIdentificador):
+            return self.expresion.generar_codigo() + "\n    ret ; retorno desde la subrutina"
        
     
-
-
 class NodoIdentificador(NodoAST):
     #Nodo que representa a un identificador
     def __init__(self, nombre):
@@ -184,46 +251,8 @@ class NodoNumero(NodoAST):
 
     def generar_codigo(self):
        return f"    mov eax, {self.valor[1]} ;cargar número {self.valor[1]} en eax" #NUMBER [0] ; VALOR [1]
-    
-    """
-    ARQUITECTURA DE REGISTRO
-    rax = 64
-    -------------------------------
-    ! 32 bits   | eax = 32        |
-    |           | 16b     |       |
-    """
 
-    class NodoIf(NodoAST):
-        def __init__(self, condicion, cuerpo, else_cuerpo=None):
-            super().__init__()
-            self.condicion = condicion  # Expresión condicional
-            self.cuerpo = cuerpo  # Instrucciones dentro del if
-            self.else_cuerpo = else_cuerpo  # Instrucciones dentro del else (opcional)
-
-        def traducir(self):
-            else_part = f"\nelse:\n    {self.else_cuerpo.traducir()}" if self.else_cuerpo else ""
-            return f"if {self.condicion.traducir()}:\n    {self.cuerpo.traducir()}{else_part}"
-
-        def generar_codigo(self):
-            codigo = self.condicion.generar_codigo()  # Código de la condición
-            codigo += "\n    CMP AX, 0 ; Comparar resultado con 0"  # Verificar si es falso
-            codigo += "\n    JE ELSE ; Saltar a ELSE si es falso"
-            
-            # Código dentro del bloque if
-            for instruccion in self.cuerpo:
-                codigo += f"\n{instruccion.generar_codigo()}"
-
-            if self.else_cuerpo:
-                codigo += "\n    JMP END_IF ; Saltar fuera del if"
-                codigo += "\nELSE:"
-                for instruccion in self.else_cuerpo:
-                    codigo += f"\n{instruccion.generar_codigo()}"
-
-            codigo += "\nEND_IF:"
-            return codigo
-
-
-#----------------------------------------------------------------------------------- ANALIZADOR ----------------------
+# ================================== Analizador sintáctico ===================================================
 class Parcer:
   def __init__(self, tokens):
     self.tokens = tokens
@@ -244,17 +273,18 @@ class Parcer:
       funciones = []
       while self.obtener_token_actual():
           funciones.append(self.funcion())
+      return funciones
 
       #Verificar si existe la función main
-      nombres_funciones = [f.nombre[1] if isinstance(f.nombre, tuple) else f.nombre for f in funciones]
-      if "main" not in nombres_funciones:
-          raise SyntaxError("Error: No se encontró la función 'main'. El programa no puede continuar.")
-      return funciones  # Devuelve todas las funciones
+      #nombres_funciones = [f.nombre[1] if isinstance(f.nombre, tuple) else f.nombre for f in funciones]
+      #if "main" not in nombres_funciones:
+      #    raise SyntaxError("Error: No se encontró la función 'main'. El programa no puede continuar.")
+      #return funciones  # Devuelve todas las funciones
 
 
   def funcion(self):
     #La gramática para una función: int IDENTIFIER (int, IDENTIFIER) {CUERPO}
-    tipo_return = self.coincidir("KEYWORD") #Tipo de retorno (ej. int)
+    tipo = self.coincidir("KEYWORD") #Tipo de retorno (ej. int)
     nombre_funcion = self.coincidir("IDENTIFIER") #Nombre de la funcion
     self.coincidir("DELIMITER") #Se espera un (
     parametros = self.parametros() 
@@ -262,25 +292,35 @@ class Parcer:
     self.coincidir("DELIMITER") #Se espera un {
     cuerpo = self.cuerpo()
     self.coincidir("DELIMITER") #Se espera un }
+
+    self.coincidir("DELIMITER") #Se espera un }
+
+    global texto_a_imprimir_traducido_a_lenguaje_python
+    #global texto_a_imprimir_traducido_a_lenguaje_ensamblador
+
+
+    texto_a_imprimir_traducido_a_lenguaje_python = NodoFuncion([tipo, nombre_funcion], parametros, cuerpo).traducir()
+    #texto_a_imprimir_traducido_a_lenguaje_ensamblador = NodoFuncion(nombre_funcion, parametros, cuerpo).generar_codigo()
+
     return NodoFuncion(nombre_funcion, parametros, cuerpo)
 
   def parametros(self):
     parametros = []
-    #Reglas para parámetros: [PALABRA RESERVADA, IDENTIFIER, coma, PALABRA RESERVADA, IDENTIFICADOR]
-    tipo = self.coincidir("KEYWORD") #Tipo / Palabra reservada del parámetro
+    #Reglas para parámetros: [PALABRA RESERVADA, IDENTIFER, coma, PALABRA RESERVADA, IDENTIFER]
+    tipo = self.coincidir("KEYWORD") #Tipo / Palabra reservada del parametro
     nombre = self.coincidir("IDENTIFIER") #Nombre del parámetro
     parametros.append((tipo, nombre)) #Se crea nodo
     while self.obtener_token_actual() and self.obtener_token_actual()[1] == ",":
-      self.coincidir("DELIMITER") #sE ESPERA UNA ,
+      self.coincidir("DELIMITER") #SE ESPERA UNA ,
       tipo = self.coincidir("KEYWORD") #tipo / Palabra reservada de parámetro
       nombre = self.coincidir("IDENTIFIER") #Nombre del parámetro
       parametros.append((tipo, nombre)) #Se crea nodo
     return parametros
   
   def cuerpo(self):
-    #Gramática para el cuerpo: return IDENTIFIER, OPERATOR IDENTIFIER
+    #Gramática para el cuerpo: RETURN
     instrucciones = []
-    while self.obtener_token_actual() and self.obtener_token_actual()[1] != "}": #VERIFICA SI HAY TOKEN DE CIERRE 
+    while self.obtener_token_actual() and self.obtener_token_actual()[1] != "}": #VERIFICA SI HAY TOKEN DE CIERRE
         if self.obtener_token_actual()[1] == "return": #Verifica el contenido del token y mira si es igual a return
            instrucciones.append(self.retorno()) #Se agrega a la lista un nodo llamado retorno
         else:
@@ -288,12 +328,19 @@ class Parcer:
     return instrucciones
   
   def asignacion(self):
-    tipo = self.coincidir("KEYWORD") #Se espera un return
-    nombre = self.coincidir("IDENTIFIER") #Se espera un Identificador <Nombre de la variable>
-    self.coincidir("OPERATOR") #Se espera un Operador <ej. Suma>
-    expresion = self.expresion()
-    self.coincidir("DELIMITER") #Se espera un ;
-    return NodoAsignacion([tipo, nombre], expresion)
+    tipo = self.coincidir("KEYWORD") #Se espera un int / if / else
+    if tipo[1] == "INT".lower():
+        nombre = self.coincidir("IDENTIFIER") #Se espera un Identificador como el <Nombre de la variable>
+        self.coincidir("EQUAL") #Espera un signo =
+        expresion = self.expresion()
+        self.coincidir("DELIMITER") #Se espera un ;
+        return NodoAsignacion([tipo, nombre], expresion)
+    elif tipo[1] == "IF".lower():
+        self.coincidir("DELIMITER") #Se espera un (
+        expresion = self.expresion()
+        self.coincidir("DELIMITER") #Se espera un )
+        self.coincidir("DELIMITER") #Se espera un }
+        return NodoAsignacion(tipo, expresion)
   
   def retorno(self):
      self.coincidir("KEYWORD")
@@ -304,10 +351,22 @@ class Parcer:
   
   def expresion(self):
      izquierda = self.termino()
-     while self.obtener_token_actual() and self.obtener_token_actual()[1] == "OPERATOR":
-        operador = self.coincidir("OPERATOR")
-        derecha = self.termino()
-        izquierda = NodoOperacion(izquierda, operador, derecha)
+
+     while self.obtener_token_actual()[0] == "OPERATOR" or self.obtener_token_actual()[0] == "EQUAL":
+
+        if self.obtener_token_actual()[0] == "OPERATOR":
+            operador = self.coincidir("OPERATOR") #Se espera + - * /
+            derecha = self.termino()
+            izquierda = NodoOperacion(izquierda, operador, derecha)
+            return izquierda
+        
+        elif self.obtener_token_actual()[0] == "EQUAL":
+            operador = self.coincidir("EQUAL") #Se espera un =
+            operador2 = self.coincidir("EQUAL") #Se espera un =
+            derecha = self.termino()
+            izquierda = NodoOperacion(izquierda, [str(operador[1]) + str(operador2[1])] ,derecha)
+            return izquierda
+        
      return izquierda
   
   def termino(self):
@@ -318,6 +377,17 @@ class Parcer:
         return NodoIdentificador(self.coincidir("IDENTIFIER"))
      else:
         raise SyntaxError(f"Expresion no valida: {token}")
+     
+  def traducir_a_lenguaje_python(self):
+        return texto_a_imprimir_traducido_a_lenguaje_python
+  
+  def traducir_a_lenguaje_ensamblador(self):
+        #return texto_a_imprimir_traducido_a_lenguaje_ensamblador
+        pass
+  
+  def ejecutar_codigo(self):
+        pass
+
 
 #=== EJEMPLO DE USO [ en proceso ] ===
 
@@ -325,27 +395,19 @@ import json
 
 # === Código fuente válido ===
 codigo_fuente = """
-if suma(int a, int b) { 
-  int a + b;
-  return c;
-}
-
-int main(int a, int b) { 
-  int a + b;
-  return a; 
-  }
-
-int resta(int a, int b) { 
-  int a - b;
-  return c;
+int suma(int a, int b) {
+    int c = a + b; 
+    return c;
 }
 """
 
-codigo_2 = """"
-int resta(int a, int b) { 
-  int a - b;
-  return c;
-}"""
+codigo_if = """
+if comparar(int a, int b) {
+    if ( a == b ) {
+        return a; 
+    }
+}
+"""
 
 def identificar_token(texto):
     patron_general = "|".join(f"(?P<{token}>{patron})" for token, patron in tokens_patron.items())
@@ -357,28 +419,19 @@ def identificar_token(texto):
                 tokens_encontrados.append((token, valor))
     return tokens_encontrados
 
-tokens_globales = identificar_token(codigo_2)
-print("Tokens encontrados:")
+tokens_globales = identificar_token(codigo_if)
+print("\n================================ Tokens encontrados: ====================================================== ")
 for tipo, valor in tokens_globales:
     print(f"{tipo} : {valor}")
 
 
-# === Tokenización ===
-
-
-def tokenizar(codigo):
-    tokens = []
-    patron = "|".join(f"(?P<{tipo}>{expresion})" for tipo, expresion in tokens_patron.items())
-    for coincidencia in re.finditer(patron, codigo):
-        tipo = coincidencia.lastgroup
-        valor = coincidencia.group(tipo)
-        if tipo != "WHITESPACE":
-            tokens.append((tipo, valor))
-    return tokens
-
 # === Creación del AST ===
-parser = Parcer(tokenizar(codigo_fuente))
+parser = Parcer(tokens_globales)
 ast = parser.parcear()
+ast_traducido = parser.traducir_a_lenguaje_python()
+ast_ensamblador = parser.traducir_a_lenguaje_ensamblador()
+ast_ejecutado = parser.ejecutar_codigo()
+
 
 # === Conversión del AST a JSON ===
 
@@ -430,16 +483,25 @@ def nodo_a_diccionario(nodo):
     return {"tipo": "Desconocido", "valor": str(nodo)}  # Muestra el contenido desconocido
 
 ast_json = json.dumps(nodo_a_diccionario(ast), indent=4)
-print("=== Analisis sintactico completo sin errores ===")
+print("\n================================ Analisis sintactico completo sin errores =============================================")
+print("\n======================================== Arbol JSON =================================================")
+
 print(ast_json)
 
+print("==================== Traduccion a lenguaje python y ensamblador y su ejecucion ==============================")
+print("==================================== Lenguaje C =======================================================")
 
-print("----- Expresion optimizada ----")
-nodo_expresion = NodoOperacion(NodoNumero(5), "+", NodoNumero(8))
-print(json.dumps(nodo_a_diccionario(nodo_expresion), indent=1))
-expresion_optimizada = nodo_expresion.optimizar()
-print("-------------------------------------------------------------------------------------------------------------------------")
-print(codigo_fuente)
-print("Código traducido")
-codigo_ensamblador = ast_json.generarcodigo()
+print(codigo_if)
+
+print("==================================== Lenguaje Python =======================================================\n")
+
+codigo_python = ast_traducido
+print(codigo_python)
+
+
+print("\n==================================== Lenguaje Ensamblador =======================================================")
+
+codigo_ensamblador = ast_ensamblador
 print(codigo_ensamblador)
+
+

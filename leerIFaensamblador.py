@@ -539,5 +539,3 @@ print("\n==================================== Lenguaje Ensamblador =============
 
 codigo_ensamblador = ast_ensamblador
 print(codigo_ensamblador)
-
-

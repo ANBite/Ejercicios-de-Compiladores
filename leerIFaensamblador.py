@@ -37,13 +37,16 @@ class NodoFuncion(NodoAST):
                 elif isinstance(c, NodoRetorno):
                     cuerpo.append(c.traducir())
 
-            return f"def {self.nombre[1][1]} ({params}):\n     {cuerpo[0]}\n     {cuerpo[1]}"  #Identificador en self.nombre[0] 
+            return f"def {self.nombre[1][1]} ({params}):\n     {cuerpo[0]}\n     return {cuerpo[1]}"  #Identificador en self.nombre[0] 
         
-        elif self.nombre[0][1] == "IF".lower():
-            params = ",".join(NodoParametro(p[0], p[1]).traducir() for p in self.parametro)
+        elif self.nombre[1] == "IF".lower():
 
+            #print(self.parametro)
+            #simbolo = self.parametro[0]
+            #params = " == ".join(NodoAsignacion(p[0], p[1]).traducir() for p in self.parametro)
+            #print(f"/-/-/-/-/-/- {simbolo}")
             cuerpo = []
-            for c in self.cuerpo:
+            for c in self.parametro:
                 #Al inicio es un nodo asignacion y un nodo retorno, luego el nodo asignacion se divide en asignacion y operacion
                 if isinstance(c, NodoAsignacion):
                     cuerpo.append(c.traducir())
@@ -53,7 +56,7 @@ class NodoFuncion(NodoAST):
 
             ejecucion = self.ejecutar("if", cuerpo[0], cuerpo[1])
             salto = "==================================== Ejecucion del Codigo ==========================================="
-            return f"if {cuerpo[0]}:\n    {cuerpo[1]} \n\n{salto}\n\n{ejecucion}"  #Identificador en self.nombre[0] 
+            return f"{self.nombre[1]} {cuerpo[0]}:\n     return {cuerpo[1]}\n{salto}\n\n{ejecucion}"  #Identificador en self.nombre[0] 
         
     def ejecutar(self, tipo, cuerpo1, cuerpo2):
         super().__init__()
@@ -61,6 +64,7 @@ class NodoFuncion(NodoAST):
         self.cuerpo1 = cuerpo1
         self.cuerpo2 = cuerpo2
         if self.tipo == "IF".lower():
+            print(self.cuerpo1[0])
             if self.cuerpo1[2] == "=" and self.cuerpo1[3] == "=":
                 if self.cuerpo1[0] == self.cuerpo1[5]:
                     return f"{self.cuerpo2}"
@@ -107,9 +111,9 @@ class NodoAsignacion(NodoAST):
 
     def traducir(self):
         
-        #print(self.nombre[0][1])
+        print(self.nombre)
         
-        if self.nombre[1] == "IF".lower():
+        if self.nombre == "IF".lower():
             if isinstance(self.expresion, NodoOperacion):
                 return f"{self.expresion.traducir()}"
         
@@ -217,7 +221,7 @@ class NodoRetorno(NodoAST):
 
     def traducir(self):
        if isinstance(self.expresion, NodoIdentificador):
-            return f"return {self.expresion.traducir()}"
+            return f"{self.expresion.traducir()}"
     
 
     def generar_codigo(self):
@@ -283,38 +287,70 @@ class Parcer:
 
 
   def funcion(self):
-    #La gramática para una función: int IDENTIFIER (int, IDENTIFIER) {CUERPO}
-    tipo = self.coincidir("KEYWORD") #Tipo de retorno (ej. int)
-    nombre_funcion = self.coincidir("IDENTIFIER") #Nombre de la funcion
-    self.coincidir("DELIMITER") #Se espera un (
-    parametros = self.parametros() 
-    self.coincidir("DELIMITER") #Se espera un )
-    self.coincidir("DELIMITER") #Se espera un {
-    cuerpo = self.cuerpo()
-    self.coincidir("DELIMITER") #Se espera un }
-
-    self.coincidir("DELIMITER") #Se espera un }
-
     global texto_a_imprimir_traducido_a_lenguaje_python
-    #global texto_a_imprimir_traducido_a_lenguaje_ensamblador
+    texto_a_imprimir_traducido_a_lenguaje_python = ""
+    #La gramática para una función: int IDENTIFIER (int, IDENTIFIER) {CUERPO}7
+    tipo = self.coincidir("KEYWORD") #Se espera un KEYWORD cualquiera
+    if tipo[1] == "INT".lower():
+        nombre_funcion = self.coincidir("IDENTIFIER") #Nombre de la funcion
+        self.coincidir("DELIMITER") #Se espera un (
+        parametros = self.parametros() 
+        self.coincidir("DELIMITER") #Se espera un )
+        self.coincidir("DELIMITER") #Se espera un {
+        cuerpo = self.cuerpo()
+        self.coincidir("DELIMITER") #Se espera un }
+
+        #global texto_a_imprimir_traducido_a_lenguaje_python
+        #global texto_a_imprimir_traducido_a_lenguaje_ensamblador
 
 
-    texto_a_imprimir_traducido_a_lenguaje_python = NodoFuncion([tipo, nombre_funcion], parametros, cuerpo).traducir()
-    #texto_a_imprimir_traducido_a_lenguaje_ensamblador = NodoFuncion(nombre_funcion, parametros, cuerpo).generar_codigo()
+        texto_a_imprimir_traducido_a_lenguaje_python = NodoFuncion([tipo, nombre_funcion], parametros, cuerpo).traducir()
+        #texto_a_imprimir_traducido_a_lenguaje_ensamblador = NodoFuncion(nombre_funcion, parametros, cuerpo).generar_codigo()
 
-    return NodoFuncion(nombre_funcion, parametros, cuerpo)
+        return NodoFuncion(nombre_funcion, parametros, cuerpo)
+
+    elif tipo[1] == "IF".lower():
+        self.coincidir("DELIMITER") #Se espera un (
+        #parametros = self.parametros() 
+        parametros = self.cuerpo()
+        #self.coincidir("DELIMITER") #Se espera un )
+        #self.coincidir("DELIMITER") #Se espera un {
+        #cuerpo = self.cuerpo()
+        self.coincidir("DELIMITER") #Se espera un }
+        cuerpo = parametros[1]
+
+       # global texto_a_imprimir_traducido_a_lenguaje_python
+        #global texto_a_imprimir_traducido_a_lenguaje_ensamblador
+
+
+        texto_a_imprimir_traducido_a_lenguaje_python = NodoFuncion(tipo, parametros, cuerpo).traducir()
+        #texto_a_imprimir_traducido_a_lenguaje_ensamblador = NodoFuncion(nombre_funcion, parametros, cuerpo).generar_codigo()
+
+        return NodoFuncion(tipo, parametros, cuerpo)
+    else:
+        raise SyntaxError(f"Error sintactico {tipo} no es un KEYWORD válido")
 
   def parametros(self):
     parametros = []
     #Reglas para parámetros: [PALABRA RESERVADA, IDENTIFER, coma, PALABRA RESERVADA, IDENTIFER]
-    tipo = self.coincidir("KEYWORD") #Tipo / Palabra reservada del parametro
-    nombre = self.coincidir("IDENTIFIER") #Nombre del parámetro
+
+    tipo = self.coincidir("KEYWORD") #Tipo / Palabra reservada del parametro [puede ser int]
+    nombre = self.coincidir("IDENTIFIER") #Nombre del parámetro [puede ser a o un número]
     parametros.append((tipo, nombre)) #Se crea nodo
     while self.obtener_token_actual() and self.obtener_token_actual()[1] == ",":
       self.coincidir("DELIMITER") #SE ESPERA UNA ,
       tipo = self.coincidir("KEYWORD") #tipo / Palabra reservada de parámetro
       nombre = self.coincidir("IDENTIFIER") #Nombre del parámetro
       parametros.append((tipo, nombre)) #Se crea nodo
+
+    while self.obtener_token_actual() and self.obtener_token_actual()[1] == "=":
+        igual1 = self.coincidir("EQUAL") #Se espera un =
+        #Si es una comparación: (==)
+        igual2 = self.coincidir("EQUAL") #Se espera un =
+        tipo = self.coincidir("KEYWORD") #Se espera un tipo / palabra reservada de parámetro
+        nombre = self.coincidir("IDENTIFIER") #se espera el nombre del parámetro
+        parametros.append(([str(igual1)+str(igual2),tipo], nombre))
+
     return parametros
   
   def cuerpo(self):
@@ -328,19 +364,19 @@ class Parcer:
     return instrucciones
   
   def asignacion(self):
-    tipo = self.coincidir("KEYWORD") #Se espera un int / if / else
-    if tipo[1] == "INT".lower():
+    if self.obtener_token_actual()[0] == "KEYWORD":
+        tipo = self.coincidir("KEYWORD") #Se espera un int 
         nombre = self.coincidir("IDENTIFIER") #Se espera un Identificador como el <Nombre de la variable>
         self.coincidir("EQUAL") #Espera un signo =
         expresion = self.expresion()
         self.coincidir("DELIMITER") #Se espera un ;
         return NodoAsignacion([tipo, nombre], expresion)
-    elif tipo[1] == "IF".lower():
-        self.coincidir("DELIMITER") #Se espera un (
+    
+    elif self.obtener_token_actual()[0] == "IDENTIFIER":
         expresion = self.expresion()
         self.coincidir("DELIMITER") #Se espera un )
         self.coincidir("DELIMITER") #Se espera un }
-        return NodoAsignacion(tipo, expresion)
+        return NodoAsignacion("if", expresion)
   
   def retorno(self):
      self.coincidir("KEYWORD")
@@ -351,6 +387,7 @@ class Parcer:
   
   def expresion(self):
      izquierda = self.termino()
+
 
      while self.obtener_token_actual()[0] == "OPERATOR" or self.obtener_token_actual()[0] == "EQUAL":
 
@@ -402,10 +439,8 @@ int suma(int a, int b) {
 """
 
 codigo_if = """
-if comparar(int a, int b) {
-    if ( a == b ) {
-        return a; 
-    }
+if ( a == b ) {
+    return a; 
 }
 """
 
@@ -482,16 +517,17 @@ def nodo_a_diccionario(nodo):
         return [nodo_a_diccionario(subnodo) for subnodo in nodo]
     return {"tipo": "Desconocido", "valor": str(nodo)}  # Muestra el contenido desconocido
 
-ast_json = json.dumps(nodo_a_diccionario(ast), indent=4)
+#ast_json = json.dumps(nodo_a_diccionario(ast), indent=4)
 print("\n================================ Analisis sintactico completo sin errores =============================================")
 print("\n======================================== Arbol JSON =================================================")
 
-print(ast_json)
+#print(ast_json)
 
 print("==================== Traduccion a lenguaje python y ensamblador y su ejecucion ==============================")
 print("==================================== Lenguaje C =======================================================")
 
-print(codigo_if)
+#print(codigo_fuente) #imprime codigo int
+print(codigo_if) #imprime codigo if
 
 print("==================================== Lenguaje Python =======================================================\n")
 

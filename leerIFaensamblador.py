@@ -1,12 +1,14 @@
 import re
 tokens_patron = {
-    "KEYWORD": r"\b(if|else|while|return|int|float|void)\b",
+    "KEYWORD": r"\b(if|else|elif|while|return|int|float|void)\b",
     "IDENTIFIER": r"\b[a-zA-Z_][a-zA-Z0-9_]*\b",
     "NUMBER": r"\b\d+(\.\d+)?\b",
     "OPERATOR": r"[+\-*/]",
     "DELIMITER": r"[(),;{}]",
     "WHITESPACE": r"\s+",
-    "EQUAL" : r"="
+    "EQUAL" : r"=",
+    "CONDITION" : r"==|<|>|<=|>=|!="
+    
 }
 
 class NodoAST():
@@ -25,7 +27,6 @@ class NodoFuncion(NodoAST):
         self.cuerpo = cuerpo
     
     def traducir(self):
-
         if self.nombre[0][1] == "INT".lower():
             params = ",".join(NodoParametro(p[0], p[1]).traducir() for p in self.parametro)
 
@@ -39,12 +40,7 @@ class NodoFuncion(NodoAST):
 
             return f"def {self.nombre[1][1]} ({params}):\n     {cuerpo[0]}\n     return {cuerpo[1]}"  #Identificador en self.nombre[0] 
         
-        elif self.nombre[1] == "IF".lower():
-
-            #print(self.parametro)
-            #simbolo = self.parametro[0]
-            #params = " == ".join(NodoAsignacion(p[0], p[1]).traducir() for p in self.parametro)
-            #print(f"/-/-/-/-/-/- {simbolo}")
+        elif self.nombre[0][1] == "IF".lower():
             cuerpo = []
             for c in self.parametro:
                 #Al inicio es un nodo asignacion y un nodo retorno, luego el nodo asignacion se divide en asignacion y operacion
@@ -52,38 +48,88 @@ class NodoFuncion(NodoAST):
                     cuerpo.append(c.traducir())
                 elif isinstance(c, NodoRetorno):
                     cuerpo.append(c.traducir())
-            
 
-            ejecucion = self.ejecutar("if", cuerpo[0], cuerpo[1])
-            salto = "==================================== Ejecucion del Codigo ==========================================="
-            return f"{self.nombre[1]} {cuerpo[0]}:\n     return {cuerpo[1]}\n{salto}\n\n{ejecucion}"  #Identificador en self.nombre[0] 
+            #ejecucion = self.ejecutar("if", cuerpo[0], cuerpo[1])
+            #salto = "\n==================================== Ejecucion del Codigo ==========================================="
+            return f"{self.nombre[0][1]} {cuerpo[0]}:\n     return {cuerpo[1]}" #\n{salto}\n\n{ejecucion} 
+    
+        elif self.nombre[0][1] == "ELIF".lower():
+            cuerpo = []
+            for c in self.parametro:
+                #Al inicio es un nodo asignacion y un nodo retorno, luego el nodo asignacion se divide en asignacion y operacion
+                if isinstance(c, NodoAsignacion):
+                    cuerpo.append(c.traducir())
+                elif isinstance(c, NodoRetorno):
+                    cuerpo.append(c.traducir())
+
+            return f"{self.nombre[0][1]} {cuerpo[0]}:\n     return {cuerpo[1]}" 
         
+        elif self.nombre[0][1] == "ELSE".lower():
+            cuerpo = []
+            for c in self.cuerpo:
+                #Al inicio es un nodo asignacion y un nodo retorno, luego el nodo asignacion se divide en asignacion y operacion
+                if isinstance(c, NodoRetorno):
+                    cuerpo.append(c.traducir())
+
+            return f"{self.nombre[0][1]}:\n     return {cuerpo[0]}" 
+            
+        
+
     def ejecutar(self, tipo, cuerpo1, cuerpo2):
         super().__init__()
         self.tipo = tipo
         self.cuerpo1 = cuerpo1
         self.cuerpo2 = cuerpo2
         if self.tipo == "IF".lower():
-            print(self.cuerpo1[0])
             if self.cuerpo1[2] == "=" and self.cuerpo1[3] == "=":
                 if self.cuerpo1[0] == self.cuerpo1[5]:
                     return f"{self.cuerpo2}"
                 else:
                     return f"{self.cuerpo2}"
-
-        
+    
     
     def generar_codigo(self):
-        params = ",".join(NodoParametro(p[0], p[1]).generar_codigo() for p in self.parametro)
-        cuerpo = []
-        for c in self.cuerpo:
-            #Al inicio es un nodo asignacion y un nodo retorno, luego el nodo asignacion se divide en asignacion y operacion
-            if isinstance(c, NodoAsignacion):
-                cuerpo.append(c.generar_codigo())
-            elif isinstance(c, NodoRetorno):
-                cuerpo.append(c.generar_codigo())
+        if self.nombre[0][1] == "INT".lower():
+            cuerpo = []
+            for c in self.cuerpo:
+                #Al inicio es un nodo asignacion y un nodo retorno, luego el nodo asignacion se divide en asignacion y operacion
+                if isinstance(c, NodoAsignacion):
+                    cuerpo.append(c.generar_codigo())
+                elif isinstance(c, NodoRetorno):
+                    cuerpo.append(c.generar_codigo())
 
-        return f"{self.nombre[1]} PROC \n{cuerpo[0]}\n{cuerpo[1]}    \n{self.nombre[1]} ENDP"   
+            return f"{self.nombre[1][1]} PROC \n{cuerpo[0]}\n{cuerpo[1]}    \n{self.nombre[1][1]} ENDP"  
+        
+        if self.nombre[0][1] == "IF".lower():
+            cuerpo = []
+            for c in self.parametro:
+                #Al inicio es un nodo asignacion y un nodo retorno, luego el nodo asignacion se divide en asignacion y operacion
+                if isinstance(c, NodoAsignacion):
+                    cuerpo.append(c.generar_codigo())
+                elif isinstance(c, NodoRetorno):
+                    cuerpo.append(c.generar_codigo())
+
+            return f"{self.nombre[1][1]} PROC \n{cuerpo[0]}\n{cuerpo[1]}    \n{self.nombre[1][1]} ENDP"
+
+        if self.nombre[0][1] == "ELIF".lower():
+            cuerpo = []
+            for c in self.parametro:
+                #Al inicio es un nodo asignacion y un nodo retorno, luego el nodo asignacion se divide en asignacion y operacion
+                if isinstance(c, NodoAsignacion):
+                    cuerpo.append(c.generar_codigo())
+                elif isinstance(c, NodoRetorno):
+                    cuerpo.append(c.generar_codigo())
+
+            return f"{self.nombre[1][1]} PROC \n{cuerpo[0]}\n{cuerpo[1]}    \n{self.nombre[1][1]} ENDP"
+        if self.nombre[0][1] == "ELSE".lower():
+            cuerpo = []
+            for c in self.cuerpo:
+                #Al inicio es un nodo asignacion y un nodo retorno, luego el nodo asignacion se divide en asignacion y operacion
+                if isinstance(c, NodoRetorno):
+                    cuerpo.append(c.generar_codigo())
+
+            return f"{self.nombre[1][1]} PROC \n{cuerpo[0]}\n{self.nombre[1][1]} ENDP"
+
 
         
 
@@ -110,10 +156,7 @@ class NodoAsignacion(NodoAST):
         self.expresion = expresion #Que se está asignando la variable
 
     def traducir(self):
-        
-        print(self.nombre)
-        
-        if self.nombre == "IF".lower():
+        if self.nombre[1] == "IF".lower():
             if isinstance(self.expresion, NodoOperacion):
                 return f"{self.expresion.traducir()}"
         
@@ -122,10 +165,16 @@ class NodoAsignacion(NodoAST):
                 return f"{self.nombre[1][1]} = {self.expresion.traducir()}"
     
     def generar_codigo(self):
-        if isinstance(self.expresion, NodoOperacion):
-            codigo = self.expresion.generar_codigo()
-            codigo += f"\n    mov  [{self.nombre[1][1]}], eax; guardar resultado en {self.nombre[1][1]}"
-            return codigo
+        if self.nombre[0][1] == "INT".lower():
+            if isinstance(self.expresion, NodoOperacion):
+                codigo = self.expresion.generar_codigo()
+                codigo += f"\n    mov  [{self.nombre[1][1]}], eax; guardar resultado en {self.nombre[1][1]}"
+                return codigo
+        elif self.nombre[1] == "IF".lower():
+            if isinstance(self.expresion, NodoOperacion):
+                codigo = self.expresion.generar_codigo()
+                codigo += f"\n    mov  resultado, eax;    si son iguales, guardar eax en resultado"
+                return codigo
 
 
 class NodoOperacion(NodoAST):
@@ -137,11 +186,19 @@ class NodoOperacion(NodoAST):
         self.derecha = derecha
 
     def traducir(self):
-        if self.operador[0] == "==":
-            if isinstance(self.izquierda, NodoNumero) and isinstance(self.derecha, NodoNumero):
-                return f"{self.izquierda.traducir()} {self.operador[0]} {self.derecha.traducir()}"
-            elif isinstance(self.izquierda, NodoIdentificador) and isinstance(self.derecha, NodoIdentificador):
-                return f"{self.izquierda.traducir()} {self.operador[0]} {self.derecha.traducir()}"
+
+        if self.operador[0] == "EQUAL" or self.operador[0] == "CONDITION":
+            if self.operador[0] == "EQUAL":
+                if isinstance(self.izquierda, NodoNumero) and isinstance(self.derecha, NodoNumero):
+                    return f"{self.izquierda.traducir()} {str(self.operador[1]) + str(self.operador[1])} {self.derecha.traducir()}"
+                elif isinstance(self.izquierda, NodoIdentificador) and isinstance(self.derecha, NodoIdentificador):
+                    return f"{self.izquierda.traducir()} {str(self.operador[1]) + str(self.operador[1])} {self.derecha.traducir()}"
+            elif self.operador[0] == "CONDITION":
+                if isinstance(self.izquierda, NodoNumero) and isinstance(self.derecha, NodoNumero):
+                    return f"{self.izquierda.traducir()} {self.operador[1]} {self.derecha.traducir()}"
+                elif isinstance(self.izquierda, NodoIdentificador) and isinstance(self.derecha, NodoIdentificador):
+                    return f"{self.izquierda.traducir()} {self.operador[1]} {self.derecha.traducir()}"
+        
         elif self.operador[0] == "OPERATOR":  
             if isinstance(self.izquierda, NodoNumero) and isinstance(self.derecha, NodoNumero):
                 return f"{self.izquierda.traducir()} {self.operador[1]} {self.derecha.traducir()}"
@@ -164,13 +221,17 @@ class NodoOperacion(NodoAST):
             
             codigo.append(self.derecha.generar_codigo()) #Cargar el operador derecho
             codigo.append("    pop ebx; recuperar el primer operando") 
-            #ebx = operando 1 y eax = operando 2
 
         if self.operador[1] == "+":
             codigo.append("    add eax, ebx ;eax + ebx")
         elif self.operador[1] == "-":
             codigo.append("    sub ebx, eax; ebx - eax")
             codigo.append("    mov eax, ebx")
+        elif self.operador[1] == "=":
+            codigo.append("    CMP eax, ebx    ;Compara EAX con EBX")
+        elif self.operador[0] == "CONDITION":
+            codigo.append("    CMP eax, ebx    ;Compara EAX con EBX")
+
         return "\n".join(codigo)
           
     #Crear un método que optimice la operación
@@ -239,7 +300,7 @@ class NodoIdentificador(NodoAST):
        return self.nombre[1]
     
     def generar_codigo(self):
-       return f"    mov eax, {self.nombre[1]} ;cargar variable {self.nombre[1]} en eax" #IDENTIFICADOR [0] ; VALOR [1]
+       return f"    mov eax, {self.nombre[1]} ;   cargar variable {self.nombre[1]} en eax"
     
 
 
@@ -254,13 +315,15 @@ class NodoNumero(NodoAST):
     
 
     def generar_codigo(self):
-       return f"    mov eax, {self.valor[1]} ;cargar número {self.valor[1]} en eax" #NUMBER [0] ; VALOR [1]
+       return f"    mov eax, {self.valor[1]} ;   cargar número {self.valor[1]} en eax"
 
 # ================================== Analizador sintáctico ===================================================
 class Parcer:
   def __init__(self, tokens):
     self.tokens = tokens
     self.pos = 0
+    self.texto_a_imprimir_traducido_a_lenguaje_python = ""
+    self.texto_a_imprimir_traducido_a_lenguaje_ensamblador = ""
   
   def obtener_token_actual(self):
     return self.tokens[self.pos] if self.pos < len(self.tokens) else None #Envía el token actual si está dentro del rango del tamaño
@@ -287,8 +350,6 @@ class Parcer:
 
 
   def funcion(self):
-    global texto_a_imprimir_traducido_a_lenguaje_python
-    texto_a_imprimir_traducido_a_lenguaje_python = ""
     #La gramática para una función: int IDENTIFIER (int, IDENTIFIER) {CUERPO}7
     tipo = self.coincidir("KEYWORD") #Se espera un KEYWORD cualquiera
     if tipo[1] == "INT".lower():
@@ -300,35 +361,47 @@ class Parcer:
         cuerpo = self.cuerpo()
         self.coincidir("DELIMITER") #Se espera un }
 
-        #global texto_a_imprimir_traducido_a_lenguaje_python
-        #global texto_a_imprimir_traducido_a_lenguaje_ensamblador
+        self.texto_a_imprimir_traducido_a_lenguaje_python = NodoFuncion([tipo, nombre_funcion], parametros, cuerpo).traducir()
+        self.texto_a_imprimir_traducido_a_lenguaje_ensamblador = NodoFuncion([tipo, nombre_funcion], parametros, cuerpo).generar_codigo()
 
-
-        texto_a_imprimir_traducido_a_lenguaje_python = NodoFuncion([tipo, nombre_funcion], parametros, cuerpo).traducir()
-        #texto_a_imprimir_traducido_a_lenguaje_ensamblador = NodoFuncion(nombre_funcion, parametros, cuerpo).generar_codigo()
-
-        return NodoFuncion(nombre_funcion, parametros, cuerpo)
+        return NodoFuncion([tipo, nombre_funcion], parametros, cuerpo)
 
     elif tipo[1] == "IF".lower():
         self.coincidir("DELIMITER") #Se espera un (
-        #parametros = self.parametros() 
         parametros = self.cuerpo()
-        #self.coincidir("DELIMITER") #Se espera un )
-        #self.coincidir("DELIMITER") #Se espera un {
-        #cuerpo = self.cuerpo()
+        self.coincidir("DELIMITER") #Se espera un }
+        cuerpo = parametros[1]
+        
+        self.texto_a_imprimir_traducido_a_lenguaje_python += NodoFuncion([tipo, tipo], parametros, cuerpo).traducir()
+        self.texto_a_imprimir_traducido_a_lenguaje_ensamblador += NodoFuncion([tipo, tipo], parametros, cuerpo).generar_codigo()
+
+        return NodoFuncion([tipo, tipo], parametros, cuerpo)
+    
+    elif tipo[1] == "ELIF".lower():
+        self.coincidir("DELIMITER") #Se espera un (
+        parametros = self.cuerpo()
         self.coincidir("DELIMITER") #Se espera un }
         cuerpo = parametros[1]
 
-       # global texto_a_imprimir_traducido_a_lenguaje_python
-        #global texto_a_imprimir_traducido_a_lenguaje_ensamblador
+        self.texto_a_imprimir_traducido_a_lenguaje_python += f"\n{NodoFuncion([tipo, tipo], parametros, cuerpo).traducir()}"
+        self.texto_a_imprimir_traducido_a_lenguaje_ensamblador += f"\n{NodoFuncion([tipo, tipo], parametros, cuerpo).generar_codigo()}"
 
+        return NodoFuncion([tipo, tipo], parametros, cuerpo)
 
-        texto_a_imprimir_traducido_a_lenguaje_python = NodoFuncion(tipo, parametros, cuerpo).traducir()
-        #texto_a_imprimir_traducido_a_lenguaje_ensamblador = NodoFuncion(nombre_funcion, parametros, cuerpo).generar_codigo()
+    elif tipo[1] == "ELSE".lower():
+        self.coincidir("DELIMITER") #Se espera un {
+        cuerpo = self.cuerpo()
+        self.coincidir("DELIMITER") #Se espera un }                            
 
-        return NodoFuncion(tipo, parametros, cuerpo)
+        n = ""                        
+        self.texto_a_imprimir_traducido_a_lenguaje_python += f"\n{NodoFuncion([tipo, tipo], n, cuerpo).traducir()}"
+        self.texto_a_imprimir_traducido_a_lenguaje_ensamblador += f"\n{NodoFuncion([tipo, tipo], n, cuerpo).generar_codigo()}"
+
+        return NodoFuncion([tipo, tipo], n, cuerpo)
+    
     else:
-        raise SyntaxError(f"Error sintactico {tipo} no es un KEYWORD válido")
+
+        raise SyntaxError(f"Error sintactico {tipo} no es un KEYWORD valido")
 
   def parametros(self):
     parametros = []
@@ -360,7 +433,8 @@ class Parcer:
         if self.obtener_token_actual()[1] == "return": #Verifica el contenido del token y mira si es igual a return
            instrucciones.append(self.retorno()) #Se agrega a la lista un nodo llamado retorno
         else:
-           instrucciones.append(self.asignacion())
+            instrucciones.append(self.asignacion())
+
     return instrucciones
   
   def asignacion(self):
@@ -375,8 +449,8 @@ class Parcer:
     elif self.obtener_token_actual()[0] == "IDENTIFIER":
         expresion = self.expresion()
         self.coincidir("DELIMITER") #Se espera un )
-        self.coincidir("DELIMITER") #Se espera un }
-        return NodoAsignacion("if", expresion)
+        self.coincidir("DELIMITER") #Se espera un {}
+        return NodoAsignacion(["keyword", "if"], expresion)
   
   def retorno(self):
      self.coincidir("KEYWORD")
@@ -388,6 +462,7 @@ class Parcer:
   def expresion(self):
      izquierda = self.termino()
 
+    #+ - * /
 
      while self.obtener_token_actual()[0] == "OPERATOR" or self.obtener_token_actual()[0] == "EQUAL":
 
@@ -399,10 +474,20 @@ class Parcer:
         
         elif self.obtener_token_actual()[0] == "EQUAL":
             operador = self.coincidir("EQUAL") #Se espera un =
-            operador2 = self.coincidir("EQUAL") #Se espera un =
+            self.coincidir("EQUAL") #Se espera un =
             derecha = self.termino()
-            izquierda = NodoOperacion(izquierda, [str(operador[1]) + str(operador2[1])] ,derecha)
+            izquierda = NodoOperacion(izquierda, operador, derecha) #----------------------------
             return izquierda
+        elif self.obtener_token_actual()[0] == "CONDITION":
+            operador = self.coincidir("CONDITION") #Se espera un < > !
+            if self.obtener_token_actual()[0] == "COINDITION":
+                self.coincidir("CONDITION") #Se espera un < > ! =
+                derecha = self.termino()
+                izquierda = NodoOperacion(izquierda, operador, derecha)
+
+            else:
+                pass
+
         
      return izquierda
   
@@ -416,11 +501,11 @@ class Parcer:
         raise SyntaxError(f"Expresion no valida: {token}")
      
   def traducir_a_lenguaje_python(self):
-        return texto_a_imprimir_traducido_a_lenguaje_python
+        return self.texto_a_imprimir_traducido_a_lenguaje_python
   
   def traducir_a_lenguaje_ensamblador(self):
-        #return texto_a_imprimir_traducido_a_lenguaje_ensamblador
-        pass
+        return self.texto_a_imprimir_traducido_a_lenguaje_ensamblador
+        #pass
   
   def ejecutar_codigo(self):
         pass
@@ -440,7 +525,11 @@ int suma(int a, int b) {
 
 codigo_if = """
 if ( a == b ) {
-    return a; 
+    return primerretorno; 
+} elif (a == b) {
+    return segundoretorno;
+} else {
+    return tercerterotno;
 }
 """
 
@@ -454,7 +543,8 @@ def identificar_token(texto):
                 tokens_encontrados.append((token, valor))
     return tokens_encontrados
 
-tokens_globales = identificar_token(codigo_if)
+#tokens_globales = identificar_token(codigo_fuente) #codigo con int
+tokens_globales = identificar_token(codigo_if) #codigo con if
 print("\n================================ Tokens encontrados: ====================================================== ")
 for tipo, valor in tokens_globales:
     print(f"{tipo} : {valor}")
@@ -472,12 +562,21 @@ ast_ejecutado = parser.ejecutar_codigo()
 
 def nodo_a_diccionario(nodo):
     if isinstance(nodo, NodoFuncion):
-        return {
-            "tipo": "Funcion",
-            "nombre": nodo.nombre[1],  # Corregido el acceso a nombre
-            "parametros": [{"tipo": p[0][1], "nombre": p[1][1]} for p in nodo.parametro],  # Convertir tuplas a JSON
-            "cuerpo": [nodo_a_diccionario(inst) for inst in nodo.cuerpo]  # Convertir cada instrucción
-        }
+        print(nodo.nombre)
+        if nodo.nombre[0][1] == "INT".lower():
+            return {
+                "tipo": "Funcion",
+                "nombre": nodo.nombre[1][1],  # Corregido el acceso a nombre  
+                "parametros": [{"tipo": p[0][1], "nombre": p[1][1]} for p in nodo.parametro],  # Convertir tuplas a JSON
+                "cuerpo": [nodo_a_diccionario(inst) for inst in nodo.cuerpo]  # Convertir cada instrucción
+            }
+        elif nodo.nombre[0][1] == "IF".lower():
+            return {
+                "tipo" : "Funcion",
+                "nombre" : nodo.nombre[1][1], #Imprime el nombre
+                "parametros" : "int a | EQUAL == | int b", #Imprime la confición del if
+                "cuerpo" : " l", #Imprime el resultado del if
+            }
     elif isinstance(nodo, NodoParametro):
         return {
             "tipo": "Parametro",
@@ -522,6 +621,7 @@ print("\n================================ Analisis sintactico completo sin error
 print("\n======================================== Arbol JSON =================================================")
 
 #print(ast_json)
+print("PROXIMAMENTE...")
 
 print("==================== Traduccion a lenguaje python y ensamblador y su ejecucion ==============================")
 print("==================================== Lenguaje C =======================================================")
@@ -539,3 +639,5 @@ print("\n==================================== Lenguaje Ensamblador =============
 
 codigo_ensamblador = ast_ensamblador
 print(codigo_ensamblador)
+
+

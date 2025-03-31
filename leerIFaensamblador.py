@@ -511,39 +511,6 @@ class Parcer:
         pass
 
 
-# --------------------------- Analisis Semantico -------------------------------------
-class AnalizadorSemantico():
-    def __init__(self):
-        #Resive la tabla de simbolos
-        self.tabla_simbolos = []
-        
-    def analizar(self, nodo):
-        metodo = f"visitar_{type(nodo).__name__}" #__Se utilizan para declarar metodos o atributos que son accesibles solo en la clase
-        #python for everbody
-        if hasattr(self, metodo)(nodo):
-
-            return getattr(self, metodo)(nodo)
-        
-        else:
-
-            raise Exception(f"No se ha implementado el analisis cemantico para {type(nodo).__name__}")
-        
-
-    def visitar_NodoFuncion(self, nodo):
-        if nodo.nombre[1] in self.tabla_simbolos:
-            raise Exception(f"ERROR semantico la funcion {nodo.nombre[1]} ya esta definida")
-        else:
-            self.tabla_simbolos(nodo.nombre[1]) = {f"tipo":nodo.parametros[0].tipo[1], "parametros":nodo.parametros}
-
-        for param in nodo.parametros:
-            self.tabla_simbolos[param.nombre[1]] = {"tipo":param.tipo[1]}
-        
-        for instruccion in nodo.cuerpo:
-            self.analizarinstruccion()
-        
-
-
-
 #=== EJEMPLO DE USO [ en proceso ] ===
 
 import json
@@ -672,5 +639,3 @@ print("\n==================================== Lenguaje Ensamblador =============
 
 codigo_ensamblador = ast_ensamblador
 print(codigo_ensamblador)
-
-
